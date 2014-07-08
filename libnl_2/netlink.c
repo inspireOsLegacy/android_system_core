@@ -271,3 +271,32 @@ int nl_connect(struct nl_sock *sk, int protocol)
 	return 0;
 
 }
+
+static int ack_wait_handler(struct nl_msg *msg, void *arg)
+{
+	return NL_STOP;
+}
+
+/**
+ * Wait for ACK.
+ * @arg sk		Netlink socket.
+ * @pre The netlink socket must be in blocking state.
+ *
+ * Waits until an ACK is received for the latest not yet acknowledged
+ * netlink message.
+ */
+int nl_wait_for_ack(struct nl_sock *sk)
+{
+	int err;
+	struct nl_cb *cb;
+
+	cb = nl_cb_clone(sk->s_cb);
+	if (cb == NULL)
+		return -NLE_NOMEM;
+
+	nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_wait_handler, NULL);
+	err = nl_recvmsgs(sk, cb);
+	nl_cb_put(cb);
+
+	return err;
+}
